@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Management System - Secure Access</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Define a professional, calm color palette */
+            --color-primary: #004c8c; /* Deep Blue */
+            --color-secondary: #007bff; /* Standard Blue */
+            --color-background: #f0f4f8; /* Soft Gray-Blue */
+            --color-text: #1f2937; /* Dark Gray */
+            --color-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-background);
+        }
+        /* Custom styles for the calm accents */
+        .card-admin-border:hover { border-color: #dc3545; }
+        .card-staff-border:hover { border-color: #ffc107; }
+        .card-customer-border:hover { border-color: var(--color-secondary); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 sm:p-12 rounded-2xl shadow-2xl w-full max-w-5xl text-center border border-gray-100">
+
+        <!-- Title Section -->
+        <header class="mb-10">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">
+                <span style="color: var(--color-primary);">🏦 My Bank</span> Access Portal
+            </h1>
+            <p class="text-gray-500 text-lg border-b pb-4 border-gray-100">
+                Please select your user role to access the system securely.
+            </p>
+        </header>
+
+        <!-- Role Selection Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <!-- 1. Administrator Card -->
+            <div class="role-card bg-gray-50 p-6 rounded-xl border-2 border-transparent transition duration-300 hover:shadow-lg card-admin-border">
+                <div class="text-5xl mb-4 text-red-600">
+                    <span role="img" aria-label="shield">🛡️</span>
+                </div>
+                <h3 class="text-xl font-bold mb-3" style="color: var(--color-primary);">Administrator</h3>
+                <p class="text-gray-500 text-sm mb-6 h-12 flex items-center justify-center">
+                    System-wide oversight, security management, and high-level configuration.
+                </p>
+                <a href="admin_login.php" class="inline-block px-8 py-3 bg-red-600 text-white text-sm font-semibold rounded-full shadow-md hover:bg-red-700 transition duration-300 transform hover:scale-[1.02]">
+                    Login as Admin
+                </a>
+            </div>
+
+            <!-- 2. Staff / Teller Card -->
+            <div class="role-card bg-gray-50 p-6 rounded-xl border-2 border-transparent transition duration-300 hover:shadow-lg card-staff-border">
+                <div class="text-5xl mb-4 text-yellow-500">
+                    <span role="img" aria-label="briefcase">💼</span>
+                </div>
+                <h3 class="text-xl font-bold mb-3" style="color: var(--color-primary);">Staff / Teller</h3>
+                <p class="text-gray-500 text-sm mb-6 h-12 flex items-center justify-center">
+                    Handle daily transactions, customer onboarding, and account maintenance.
+                </p>
+                <a href="staff_login.php" class="inline-block px-8 py-3 bg-yellow-500 text-white text-sm font-semibold rounded-full shadow-md hover:bg-yellow-600 transition duration-300 transform hover:scale-[1.02]">
+                    Login as Staff
+                </a>
+            </div>
+            
+            <!-- 3. Customer Card -->
+            <div class="role-card bg-gray-50 p-6 rounded-xl border-2 border-transparent transition duration-300 hover:shadow-lg card-customer-border">
+                <div class="text-5xl mb-4 text-blue-600">
+                    <span role="img" aria-label="user">👤</span>
+                </div>
+                <h3 class="text-xl font-bold mb-3" style="color: var(--color-primary);">Customer</h3>
+                <p class="text-gray-500 text-sm mb-6 h-12 flex items-center justify-center">
+                    View balances, transaction history, statements, and manage profile settings.
+                </p>
+                <a href="customer_login.php" class="inline-block px-8 py-3 bg-blue-600 text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-[1.02]">
+                    Login as Customer
+                </a>
+            </div>
+
+        </div>
+
+        <footer class="mt-12 text-sm text-gray-400">
+            &copy; 2025 My Bank Systems. All rights reserved by Abuzar Magsi.
+        </footer>
+    </div>
+
+</body>
+</html>
