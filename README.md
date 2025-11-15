@@ -1,143 +1,249 @@
-🏦 My Bank Management System
+🏦 Banking Management System
+A comprehensive web-based banking management system built with PHP, MySQL, and Bootstrap. This system provides secure banking operations for customers, staff, and administrators with role-based access control.
 
-Project Overview
+🌟 Features
+👥 Customer Portal
+Account Management - View balances, transaction history
 
-The Nexus Bank Management System is a comprehensive, role-based web application designed to handle essential daily banking operations, staff management, and financial reporting. It provides specialized dashboards for different staff roles (Teller, Manager, Loan Officer) and a secure portal for customers.
+Fund Transfers - Secure internal and external transfers
 
-The system is built on a traditional LAMP/XAMPP stack, leveraging PHP for business logic and MySQL for data persistence.
+Profile Management - Update personal information
 
-✨ Key Features
+Transaction History - Complete financial records
 
-Multi-Role Access
+👨‍💼 Staff Portal
+Customer Management - Add, view, and manage customers
 
-The system supports distinct, authenticated user roles, each with tailored access permissions:
+Account Operations - Open new accounts, process transactions
 
-Administrator: Full system control (logins via admin_login.php).
+Loan Management - Process loan applications
 
-Staff/Teller: Handles daily customer transactions and onboarding (logins via staff_login.php).
+Basic Reporting - Transaction summaries
 
-Manager: Oversees operations and compliance.
+🛡️ Admin Portal
+Full System Oversight - Complete administrative control
 
-Customer: Manages personal accounts (logins via customer_login.php).
+Advanced Reporting - Branch performance, staff analytics
 
-Manager Tools (Completed)
+User Management - Customer and staff management
 
-System Audit Log (staff_audit_log.php): Tracks and filters all critical actions taken by staff members for compliance and security review.
+Audit Logs - Comprehensive activity tracking
 
-Branch & Staff Reports (staff_branch_reports.php): Provides aggregated financial summaries, including branch assets, outstanding loans, and staff transaction performance over a specified period.
+🚀 Quick Start
+Prerequisites
+XAMPP/WAMP/LAMP Stack
 
-Core Operations (Planned/Under Development)
+PHP 7.4+
 
-Customer Account Management (Open, Close, Update).
+MySQL 5.7+
 
-Deposit and Withdrawal processing.
+Web Browser
 
-Loan Application Review and Approval (for Loan Officers).
+Installation
+Clone the Repository
 
-Real-time Customer Dashboard.
+bash
+git clone https://github.com/Abuzar2/Banking-Web.git
+cd Banking-Web
+Database Setup
+
+Import banking_sys.sql to your MySQL database
+
+Update database credentials in config files
+
+Configure Database Connection
+
+php
+// Update in respective PHP files
+$servername = "localhost";
+$username = "root";   
+$password = ""; 
+$dbname = "banking_sys";
+$port = 3307;
+Access the Application
+
+Customers: http://localhost/Banking-Web/customer/
+
+Staff: http://localhost/Banking-Web/staff/
+
+Admin: http://localhost/Banking-Web/admin/
+
+📁 Project Structure
+text
+Banking-Web/
+├── admin/                 # Administrator Portal
+│   ├── admin_customer_details.php
+│   ├── admin_loans.php
+│   ├── staff_reports.php
+│   └── ...
+├── customer/              # Customer Portal  
+│   ├── customer_dashboard.php
+│   ├── customer_transfer.php
+│   ├── transaction_history.php
+│   └── ...
+├── staff/                 # Staff Portal
+│   ├── staff_dashboard.php
+│   └── ...
+├── authentication/        # Login System
+│   ├── admin_login.php
+│   ├── customer_login.php
+│   └── staff_login.php
+└── assets/               # CSS, JS, Images
+    ├── css/
+    ├── js/
+    └── images/
+🔐 Default Login Credentials
+Administrator
+Username: admin
+
+Password: admin123
+
+Staff
+Username: Varies by branch
+
+Password: Check database
+
+Customers
+Self-registration with admin approval
+
+🗄️ Database Schema
+Key Tables:
+
+customer - Customer personal information
+
+account - Bank account details
+
+transaction - Financial transactions
+
+loan - Loan records
+
+staff - Staff information
+
+branch - Branch details
+
+audit_log - Security audit trail
+
+🛡️ Security Features
+Password Hashing - bcrypt password encryption
+
+SQL Injection Protection - Prepared statements
+
+XSS Prevention - Input sanitization
+
+Session Management - Secure session handling
+
+Role-Based Access Control - Permission levels
+
+Audit Logging - Complete activity tracking
 
 💻 Technology Stack
+Backend: PHP 7.4+
 
-Backend: PHP (Native / Procedural with MySQLi)
+Frontend: HTML5, CSS3, JavaScript, Bootstrap 5
 
 Database: MySQL
 
-Frontend: HTML5, CSS3, Tailwind CSS (for modern, responsive UI)
+Server: Apache
 
-Dependencies: XAMPP / WAMP / LAMP environment
+Security: Prepared Statements, Password Hashing
 
-🚀 Setup and Installation
+🔧 Configuration
+Database Configuration
+Update database settings in individual PHP files:
 
-Follow these steps to get the project running locally.
-
-1. Prerequisites
-
-You must have a local web server environment installed (e.g., XAMPP, WAMP, or MAMP) with PHP and MySQL running.
-
-2. Clone the Repository
-
-git clone [https://github.com/YourUsername/banking-system.git](https://github.com/YourUsername/banking-system.git)
-cd banking-system
-
-
-3. Database Configuration
-
-Create Database: Access your MySQL server (via phpMyAdmin, MySQL Workbench, etc.) and create a new database named banking_sys.
-
-Update Connection: Ensure the database connection details in all PHP files (e.g., staff_audit_log.php, staff_branch_reports.php) are correct for your local setup:
-
+php
 $servername = "localhost";
 $username = "root";   
-$password = ""; // Change this if your root user has a password
+$password = ""; 
 $dbname = "banking_sys";
-$port = 3307; // Change this if your MySQL port is different
+$port = 3307;
+Session Configuration
+Session timeout: 30 minutes
+Automatic logout on inactivity
 
+📊 Features Overview
+Customer Features
+✅ Account balance checking
 
-Schema Setup (Critical)
-For the Manager Reports to function correctly, your transaction table must include the following columns. If your existing table is missing them, run these SQL commands:
+✅ Transaction history
 
--- 1. Add the transaction_id column (Primary Key)
-ALTER TABLE transaction 
-ADD COLUMN transaction_id INT AUTO_INCREMENT PRIMARY KEY FIRST;
+✅ Fund transfers
 
--- 2. Add the staff_id column (Foreign Key for performance tracking)
-ALTER TABLE transaction 
-ADD COLUMN staff_id INT;
+✅ Profile management
 
--- Optional: Add the foreign key constraint for data integrity
--- ALTER TABLE transaction ADD CONSTRAINT fk_transaction_staff 
--- FOREIGN KEY (staff_id) REFERENCES staff(staff_id);
+✅ Secure authentication
 
+Staff Features
+✅ Customer management
 
-You will need to create and populate other essential tables (estaff, customer, account, branch, loan, audit_log) as well.
+✅ Account operations
 
-4. Access the Application
+✅ Loan processing
 
-Once the files are placed in your web server's root directory (htdocs or www folder):
+✅ Basic reporting
 
-Start your Apache and MySQL services.
+Admin Features
+✅ System oversight
 
-Open your web browser and navigate to the entry point:
+✅ Advanced analytics
 
-http://localhost/banking-system/access_portal.html
+✅ User management
 
+✅ Audit controls
 
-🔐 Default Access Credentials (For Testing)
+🐛 Troubleshooting
+Common Issues
+Database Connection Error
 
-Note: Replace these with your own seeded test data.
+Verify MySQL service is running
 
-Role
+Check database credentials
 
-Access File
+Ensure database exists
 
-Example ID
+Session Issues
 
-Example Password
+Clear browser cache
 
-Manager
+Check PHP session configuration
 
-staff_login.php
+File Permission Errors
 
-1
+Ensure proper read/write permissions
 
-password123
+Check file paths
 
-Teller
+Support
+For issues and questions:
 
-staff_login.php
+Check the troubleshooting guide
 
-4
+Review database configuration
 
-password123
+Verify file permissions
 
-Customer
+🤝 Contributing
+Fork the repository
 
-customer_login.php
+Create a feature branch
 
-qaari
+Commit your changes
 
-qaari12
+Push to the branch
 
-🤝 Contribution
+Create a Pull Request
 
-Feel free to open issues or submit pull requests to improve the system's security, features, and user interface!
+📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+👨‍💻 Developer
+Abuzar
+
+GitHub: @Abuzar2
+
+Project: Banking Management System
+
+Note: This is a educational project for banking system management. Always follow security best practices in production environments.
+
+<div align="center">
+⭐ Don't forget to star this repository if you find it helpful!
