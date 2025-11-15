@@ -55,28 +55,28 @@ if ($result_summary) {
     }
 }
 
-
 // -----------------------------------------------------
 // 2. Report 2: Staff Transaction Performance (Last 30 Days)
 // -----------------------------------------------------
 
 $date_30_days_ago = date('Y-m-d H:i:s', strtotime("-{$report_period_days} days"));
 
+// FIXED QUERY - Using correct column names from your database
 $sql_staff_performance = "
     SELECT 
         T.staff_id,
         S.first_name,
         S.last_name,
         S.position,
-        COUNT(T.transaction_id) AS total_transactions_processed,
-        SUM(CASE WHEN T.type = 'Deposit' THEN T.amount ELSE 0 END) AS total_deposits,
-        SUM(CASE WHEN T.type = 'Withdrawal' THEN T.amount ELSE 0 END) AS total_withdrawals
+        COUNT(T.trans_id) AS total_transactions_processed,
+        SUM(CASE WHEN T.trans_type = 'Deposit' THEN T.amount ELSE 0 END) AS total_deposits,
+        SUM(CASE WHEN T.trans_type = 'Withdrawal' THEN T.amount ELSE 0 END) AS total_withdrawals
     FROM 
         transaction T
     JOIN 
         staff S ON T.staff_id = S.staff_id
     WHERE 
-        T.transaction_date >= ?
+        T.trans_date >= ?
     GROUP BY 
         T.staff_id, S.first_name, S.last_name, S.position
     ORDER BY 
@@ -84,15 +84,19 @@ $sql_staff_performance = "
 ";
 
 $stmt_performance = $conn->prepare($sql_staff_performance);
-$stmt_performance->bind_param("s", $date_30_days_ago);
-$stmt_performance->execute();
-$result_performance = $stmt_performance->get_result();
+if ($stmt_performance) {
+    $stmt_performance->bind_param("s", $date_30_days_ago);
+    $stmt_performance->execute();
+    $result_performance = $stmt_performance->get_result();
 
-while ($row = $result_performance->fetch_assoc()) {
-    $staff_transaction_performance[] = $row;
+    while ($row = $result_performance->fetch_assoc()) {
+        $staff_transaction_performance[] = $row;
+    }
+    $stmt_performance->close();
+} else {
+    echo "<!-- Query Error: " . $conn->error . " -->";
 }
 
-$stmt_performance->close();
 $conn->close();
 ?>
 
@@ -185,6 +189,24 @@ $conn->close();
         .value-cell { font-weight: 700; }
         .deposit-cell { color: #2ecc71; }
         .withdrawal-cell { color: #e74c3c; }
+        
+        /* Status Messages */
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
     </style>
 </head>
 <body>
@@ -229,7 +251,9 @@ $conn->close();
                 </tbody>
             </table>
         <?php else: ?>
-            <p>No branch data found to generate the financial summary report.</p>
+            <div class="status-message status-warning">
+                <p>No branch data found to generate the financial summary report.</p>
+            </div>
         <?php endif; ?>
 
         <!-- Report 2: Staff Transaction Performance -->
@@ -262,8 +286,24 @@ $conn->close();
                 </tbody>
             </table>
         <?php else: ?>
-            <p>No transaction data found for the last <?php echo $report_period_days; ?> days to generate the staff performance report.</p>
+            <div class="status-message status-info">
+                <p>No transaction data found for the last <?php echo $report_period_days; ?> days to generate the staff performance report.</p>
+                <p><small>This could be because:</small></p>
+                <ul style="text-align: left; display: inline-block;">
+                    <li>No transactions were processed in the last <?php echo $report_period_days; ?> days</li>
+                    <li>Transactions were processed without staff assignment</li>
+                    <li>Staff members haven't processed any transactions yet</li>
+                </ul>
+            </div>
         <?php endif; ?>
+        
+        <!-- Debug Information (Remove in production) -->
+        <div style="margin-top: 40px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 0.9em; color: #6c757d;">
+            <h4>Report Information:</h4>
+            <p><strong>Report Period:</strong> Last <?php echo $report_period_days; ?> days (since <?php echo date('M j, Y', strtotime("-{$report_period_days} days")); ?>)</p>
+            <p><strong>Branches Found:</strong> <?php echo count($branch_asset_summary); ?></p>
+            <p><strong>Staff with Transactions:</strong> <?php echo count($staff_transaction_performance); ?></p>
+        </div>
         
         <div style="height: 40px;"></div>
 
