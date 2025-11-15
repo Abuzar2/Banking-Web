@@ -370,14 +370,9 @@ if ($db_connected) {
                 <p class="text-muted mb-0">Manage customer profiles and account information</p>
             </div>
             <div class="col-md-6 text-end">
-                <?php
-// ... [Your existing PHP connection and logic for fetching customer list] ...
-
-// The part of your HTML that contains the "Add New Customer" button:
-?>
-<a href="admin_customer_add.php" class="btn btn-success" style="float: right;">
-    + Add New Customer
-</a>
+                <a href="admin_customer_add.php" class="btn btn-success">
+                    + Add New Customer
+                </a>
             </div>
         </div>
     </div>
@@ -522,32 +517,26 @@ if ($db_connected) {
                                         $<?php echo number_format($customer['total_balance'], 2); ?>
                                     </strong>
                                 </td>
-                               <td>
-    <a href="admin_customer_view.php?id=<?= $customer['cust_id'] ?>" 
-       class="btn btn-sm btn-info btn-action">
-        View
-    </a>
+                                <td>
+                                    <!-- View Link -->
+                                    <a href="admin_customer_view.php?cust_id=<?php echo $customer['cust_id']; ?>" 
+                                        class="btn btn-sm btn-info btn-action">
+                                        View
+                                    </a>
 
-  <td>
-    <!-- ... View Link ... -->
+                                    <!-- Edit Link -->
+                                    <a href="admin_customer_edit.php?cust_id=<?php echo $customer['cust_id']; ?>" 
+                                        class="btn btn-sm btn-warning btn-action">
+                                        Edit
+                                    </a>
 
-    <!-- Ensure the Href includes the cust_id as a query parameter -->
-    <a href="admin_customer_edit.php?cust_id=<?php echo $customer['cust_id']; ?>" 
-        class="btn btn-sm btn-warning btn-action">
-        Edit
-    </a>
-
-    <!-- ... Delete Link ... -->
-</td>
-<td>
-
-    <a href="admin_custome_delete.php?id=<?= $customer['cust_id'] ?>" 
-       class="btn btn-sm btn-danger btn-action"
-       onclick="return confirm('Are you sure you want to delete <?= htmlspecialchars($customer['first_name'] . ' ' . $customer['last_name']); ?>?');">
-        Delete
-    </a>
-</td>
-
+                                    <!-- Delete Link -->
+                                    <a href="admin_customer_delete.php?cust_id=<?php echo $customer['cust_id']; ?>" 
+                                        class="btn btn-sm btn-danger btn-action"
+                                        onclick="return confirm('Are you sure you want to delete <?php echo htmlspecialchars($customer['first_name'] . ' ' . $customer['last_name']); ?>?');">
+                                        Delete
+                                    </a>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -558,199 +547,6 @@ if ($db_connected) {
     
 </div>
 
-<!-- Add Customer Modal -->
-<div class="modal fade" id="addCustomerModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-              <?php
-// ... [Your existing PHP connection and logic for fetching customer list] ...
-
-// The part of your HTML that contains the "Add New Customer" button:
-?>
-<a href="admin_customer_add.php" class="btn btn-success" style="float: right;">
-    + Add New Customer
-</a>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="add">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">First Name *</label>
-                            <input type="text" class="form-control" name="first_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Last Name *</label>
-                            <input type="text" class="form-control" name="last_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">SSN (9 digits)</label>
-                            <input type="text" class="form-control" name="ssn" maxlength="9" pattern="[0-9]{9}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Date of Birth *</label>
-                            <input type="date" class="form-control" name="date_of_birth" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">City *</label>
-                            <input type="text" class="form-control" name="city" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Mobile Number *</label>
-                            <input type="text" class="form-control" name="mobile_no" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Phone Number</label>
-                            <input type="text" class="form-control" name="phone_number">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label">Address</label>
-                            <textarea class="form-control" name="address" rows="2"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Add Customer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Customer Modal -->
-<div class="modal fade" id="editCustomerModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Customer</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="edit">
-                    <input type="hidden" name="cust_id" id="edit_cust_id">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">First Name *</label>
-                            <input type="text" class="form-control" name="first_name" id="edit_first_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Last Name *</label>
-                            <input type="text" class="form-control" name="last_name" id="edit_last_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">SSN (9 digits)</label>
-                            <input type="text" class="form-control" name="ssn" id="edit_ssn" maxlength="9" pattern="[0-9]{9}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Date of Birth *</label>
-                            <input type="date" class="form-control" name="date_of_birth" id="edit_dob" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">City *</label>
-                            <input type="text" class="form-control" name="city" id="edit_city" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Mobile Number *</label>
-                            <input type="text" class="form-control" name="mobile_no" id="edit_mobile" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Phone Number</label>
-                            <input type="text" class="form-control" name="phone_number" id="edit_phone">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label">Address</label>
-                            <textarea class="form-control" name="address" id="edit_address" rows="2"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning">Update Customer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- View Customer Modal -->
-<div class="modal fade" id="viewCustomerModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Customer Details</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="customerDetailsContent"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteCustomerModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">Confirm Delete</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="cust_id" id="delete_cust_id">
-                    <p>Are you sure you want to delete <strong id="delete_cust_name"></strong>?</p>
-                    <p class="text-danger mb-0">This action cannot be undone.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<script>
-function viewCustomer(customer) {
-    const details = `
-        <div class="customer-detail">
-            <strong>Name:</strong> ${customer.first_name} ${customer.last_name}<br>
-            <strong>SSN:</strong> ${customer.ssn || 'N/A'}<br>
-            <strong>Date of Birth:</strong> ${customer.date_of_birth}<br>
-            <strong>City:</strong> ${customer.city}<br>
-            <strong>Mobile:</strong> ${customer.mobile_no}<br>
-            <strong>Phone:</strong> ${customer.phone_number || 'N/A'}<br>
-            <strong>Address:</strong> ${customer.address || 'N/A'}<br>
-            <strong>Total Accounts:</strong> ${customer.account_count}<br>
-            <strong>Total Balance:</strong> $${parseFloat(customer.total_balance).toFixed(2)}
-        </div>`;
-    document.getElementById('customerDetailsContent').innerHTML = details;
-    new bootstrap.Modal(document.getElementById('viewCustomerModal')).show();
-}
-
-function editCustomer(customer) {
-    document.getElementById('edit_cust_id').value = customer.cust_id;
-    document.getElementById('edit_first_name').value = customer.first_name;
-    document.getElementById('edit_last_name').value = customer.last_name;
-    document.getElementById('edit_ssn').value = customer.ssn || '';
-    document.getElementById('edit_dob').value = customer.date_of_birth;
-    document.getElementById('edit_city').value = customer.city;
-    document.getElementById('edit_mobile').value = customer.mobile_no;
-    document.getElementById('edit_phone').value = customer.phone_number || '';
-    document.getElementById('edit_address').value = customer.address || '';
-    new bootstrap.Modal(document.getElementById('editCustomerModal')).show();
-}
-
-function deleteCustomer(id, name) {
-    document.getElementById('delete_cust_id').value = id;
-    document.getElementById('delete_cust_name').innerText = name;
-    new bootstrap.Modal(document.getElementById('deleteCustomerModal')).show();
-}
-</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
