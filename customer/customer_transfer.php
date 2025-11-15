@@ -57,17 +57,43 @@ $stmt_accounts->close();
 // -----------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['transfer'])) {
     
-    // Sanitize and validate inputs
-    $source_account = filter_input(INPUT_POST, 'source_account', FILTER_VALIDATE_INT);
-    $destination_account = filter_input(INPUT_POST, 'destination_account', FILTER_VALIDATE_INT);
+    // Sanitize and validate inputs - FIXED FOR BIGINT ACCOUNT NUMBERS
+    $source_account = $_POST['source_account'];
+    $destination_account = $_POST['destination_account'];
     $amount = filter_input(INPUT_POST, 'amount', FILTER_VALIDATE_FLOAT, ['options' => ['min_range' => 0.01]]);
     $description = htmlspecialchars($_POST['description'] ?? 'Internal or External Transfer');
 
-    // Basic validation
-    if (!$source_account || !$destination_account || !$amount || $source_account === $destination_account) {
-        $message = "Invalid input or source/destination accounts are the same.";
-        $message_type = 'error';
-    } else {
+    // Enhanced validation
+    $errors = [];
+
+    // Validate source account (must be one of user's accounts)
+    $valid_source = false;
+    foreach ($source_accounts as $account) {
+        if ($account['account_number'] == $source_account) {
+            $valid_source = true;
+            break;
+        }
+    }
+    if (!$valid_source) {
+        $errors[] = "Invalid source account selected.";
+    }
+
+    // Validate destination account (must be numeric and 10 digits)
+    if (!preg_match('/^\d{10}$/', $destination_account)) {
+        $errors[] = "Destination account must be a 10-digit number.";
+    }
+
+    // Check if source and destination are same
+    if ($source_account == $destination_account) {
+        $errors[] = "Source and destination accounts cannot be the same.";
+    }
+
+    // Validate amount
+    if (!$amount || $amount <= 0) {
+        $errors[] = "Please enter a valid amount greater than 0.";
+    }
+
+    if (empty($errors)) {
         // Start database transaction for atomicity
         $conn->begin_transaction();
         $success = true;
@@ -87,19 +113,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['transfer'])) {
             $current_balance = $row_source['balance'];
             
             if ($current_balance < $amount) {
-                throw new Exception("Insufficient funds in source account.");
+                throw new Exception("Insufficient funds in source account. Available: $" . number_format($current_balance, 2));
             }
             $stmt_check->close();
 
 
             // --- Step 2b: Check Destination Account Existence ---
-            $sql_check_dest = "SELECT account_number FROM account WHERE account_number = ?";
+            $sql_check_dest = "SELECT account_number, account_type FROM account WHERE account_number = ?";
             $stmt_dest_check = $conn->prepare($sql_check_dest);
             $stmt_dest_check->bind_param("i", $destination_account);
             $stmt_dest_check->execute();
-            if ($stmt_dest_check->get_result()->num_rows === 0) {
-                throw new Exception("Destination account number does not exist.");
+            $dest_result = $stmt_dest_check->get_result();
+            
+            if ($dest_result->num_rows === 0) {
+                throw new Exception("Destination account number <strong>$destination_account</strong> does not exist in our system. Please verify the account number.");
             }
+            
+            // Get destination account details for better messaging
+            $dest_account = $dest_result->fetch_assoc();
             $stmt_dest_check->close();
 
             // --- Step 2c: Debit Source Account ---
@@ -123,22 +154,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['transfer'])) {
             // --- Step 2e: Log Transactions (Debit) ---
             $sql_log_debit = "INSERT INTO `transaction` (account_number, trans_type, amount, trans_date, description) VALUES (?, 'Withdrawal', ?, NOW(), ?)";
             $stmt_log_debit = $conn->prepare($sql_log_debit);
-            $debit_desc = "Transfer OUT to Acct: " . $destination_account . " - " . $description;
+            $debit_desc = "Transfer to Acct: " . $destination_account . " - " . $description;
             $stmt_log_debit->bind_param("ids", $source_account, $amount, $debit_desc);
-            $stmt_log_debit->execute();
+            if (!$stmt_log_debit->execute()) {
+                throw new Exception("Failed to log debit transaction.");
+            }
             $stmt_log_debit->close();
 
             // --- Step 2f: Log Transactions (Credit) ---
             $sql_log_credit = "INSERT INTO `transaction` (account_number, trans_type, amount, trans_date, description) VALUES (?, 'Deposit', ?, NOW(), ?)";
             $stmt_log_credit = $conn->prepare($sql_log_credit);
-            $credit_desc = "Transfer IN from Acct: " . $source_account . " - " . $description;
+            $credit_desc = "Transfer from Acct: " . $source_account . " - " . $description;
             $stmt_log_credit->bind_param("ids", $destination_account, $amount, $credit_desc);
-            $stmt_log_credit->execute();
+            if (!$stmt_log_credit->execute()) {
+                throw new Exception("Failed to log credit transaction.");
+            }
             $stmt_log_credit->close();
 
             // All steps complete, commit the transaction
             $conn->commit();
-            $message = "Transfer of \$" . number_format($amount, 2) . " successful.";
+            $message = "Transfer of <strong>$" . number_format($amount, 2) . "</strong> from account <strong>$source_account</strong> to account <strong>$destination_account</strong> was successful!";
             $message_type = 'success';
 
         } catch (Exception $e) {
@@ -147,6 +182,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['transfer'])) {
             $message = "Transaction failed: " . $e->getMessage();
             $message_type = 'error';
         }
+    } else {
+        // Display validation errors
+        $message = implode("<br>", $errors);
+        $message_type = 'error';
     }
 }
 
@@ -276,6 +315,16 @@ $conn->close();
             color: #0056b3;
             text-decoration: underline;
         }
+
+        /* Account preview */
+        .account-preview {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #495057;
+        }
     </style>
 </head>
 <body>
@@ -296,7 +345,7 @@ $conn->close();
 
         <?php if ($message): ?>
             <div class="alert <?php echo $message_type; ?>">
-                <?php echo htmlspecialchars($message); ?>
+                <?php echo $message; ?>
             </div>
         <?php endif; ?>
 
@@ -307,14 +356,15 @@ $conn->close();
                     No active accounts found to initiate a transfer.
                 </div>
             <?php else: ?>
-                <form method="POST" action="customer_transfer.php">
+                <form method="POST" action="customer_transfer.php" id="transferForm">
                     
                     <div class="form-group">
                         <label for="source_account">Source Account</label>
                         <select id="source_account" name="source_account" required>
                             <option value="">Select Account to Debit</option>
                             <?php foreach ($source_accounts as $account): ?>
-                                <option value="<?php echo $account['account_number']; ?>">
+                                <option value="<?php echo $account['account_number']; ?>" 
+                                        data-balance="<?php echo $account['balance']; ?>">
                                     <?php echo htmlspecialchars($account['account_type']) . ' (' . $account['account_number'] . ') - Bal: $' . number_format($account['balance'], 2); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -323,22 +373,30 @@ $conn->close();
 
                     <div class="form-group">
                         <label for="destination_account">Destination Account Number</label>
-                        <input type="number" id="destination_account" name="destination_account" placeholder="Enter 10-digit account number" required min="1000000000" max="9999999999">
-                        <small style="color: #777;">This can be an internal or external account number.</small>
+                        <input type="text" id="destination_account" name="destination_account" 
+                               placeholder="Enter 10-digit account number" required 
+                               pattern="\d{10}" title="Please enter exactly 10 digits">
+                        <small style="color: #777;">Enter the 10-digit account number of the recipient.</small>
+                        <div id="dest_account_info" class="account-preview" style="display: none;">
+                            <!-- Destination account info will appear here -->
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label for="amount">Amount ($)</label>
-                        <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required>
+                        <input type="number" id="amount" name="amount" step="0.01" min="0.01" 
+                               placeholder="0.00" required>
+                        <small style="color: #777;">Available balance: $<span id="available_balance">0.00</span></small>
                     </div>
 
                     <div class="form-group">
                         <label for="description">Memo/Description (Optional)</label>
-                        <input type="text" id="description" name="description" maxlength="200" placeholder="e.g., Rent Payment, Savings Deposit">
+                        <input type="text" id="description" name="description" maxlength="200" 
+                               placeholder="e.g., Rent Payment, Savings Deposit">
                     </div>
 
                     <div class="form-group">
-                        <button type="submit" name="transfer" class="submit-btn">
+                        <button type="submit" name="transfer" class="submit-btn" id="submitBtn">
                             Confirm Secure Transfer
                         </button>
                     </div>
@@ -350,6 +408,77 @@ $conn->close();
         <div style="height: 40px;"></div>
 
     </div>
+
+    <script>
+        // Update available balance when source account changes
+        document.getElementById('source_account').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const balance = selectedOption.getAttribute('data-balance');
+            document.getElementById('available_balance').textContent = parseFloat(balance).toFixed(2);
+        });
+
+        // Initialize available balance on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const sourceSelect = document.getElementById('source_account');
+            if (sourceSelect.value) {
+                const selectedOption = sourceSelect.options[sourceSelect.selectedIndex];
+                const balance = selectedOption.getAttribute('data-balance');
+                document.getElementById('available_balance').textContent = parseFloat(balance).toFixed(2);
+            }
+        });
+
+        // Real-time destination account validation
+        document.getElementById('destination_account').addEventListener('blur', function() {
+            const destAccount = this.value.trim();
+            const infoDiv = document.getElementById('dest_account_info');
+            
+            if (destAccount.length === 10 && /^\d+$/.test(destAccount)) {
+                infoDiv.innerHTML = 'Validating account...';
+                infoDiv.style.display = 'block';
+                infoDiv.style.color = '#856404';
+                infoDiv.style.background = '#fff3cd';
+                
+                // In a real application, you might want to make an AJAX call here
+                // to check if the account exists without submitting the form
+                setTimeout(() => {
+                    infoDiv.innerHTML = '✓ Account format is valid. Transfer will be processed if account exists.';
+                    infoDiv.style.color = '#155724';
+                    infoDiv.style.background = '#d4edda';
+                }, 500);
+            } else if (destAccount.length > 0) {
+                infoDiv.innerHTML = '⚠ Please enter exactly 10 digits for account number';
+                infoDiv.style.display = 'block';
+                infoDiv.style.color = '#721c24';
+                infoDiv.style.background = '#f8d7da';
+            } else {
+                infoDiv.style.display = 'none';
+            }
+        });
+
+        // Form validation before submit
+        document.getElementById('transferForm').addEventListener('submit', function(e) {
+            const sourceAccount = document.getElementById('source_account').value;
+            const destAccount = document.getElementById('destination_account').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const availableBalance = parseFloat(document.getElementById('available_balance').textContent);
+            
+            if (sourceAccount === destAccount) {
+                alert('Source and destination accounts cannot be the same!');
+                e.preventDefault();
+                return;
+            }
+            
+            if (amount > availableBalance) {
+                alert('Insufficient funds! Available balance: $' + availableBalance.toFixed(2));
+                e.preventDefault();
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to transfer $' + amount.toFixed(2) + ' to account ' + destAccount + '?')) {
+                e.preventDefault();
+            }
+        });
+    </script>
 
 </body>
 </html>
