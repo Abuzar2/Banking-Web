@@ -20,69 +20,82 @@ if ($conn->connect_error) {
 }
 
 $cust_id = $_SESSION['cust_id'];
-$customer_data = null;
 $message = '';
-$message_type = ''; // 'success' or 'error'
+$message_type = '';
+$transactions = [];
+$account_filter = isset($_GET['account']) ? $_GET['account'] : 'all';
 
-// -----------------------------------------------------
-// 1. Handle Profile Update Request (POST)
-// -----------------------------------------------------
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profile'])) {
-    
-    // Sanitize and validate inputs based on your table columns
-    $cust_address = htmlspecialchars($_POST['cust_address']);
-    $cust_phone_number = htmlspecialchars($_POST['cust_phone_number']); // corresponds to phone_number
-    $cust_city = htmlspecialchars($_POST['cust_city']);
-    $cust_mobile_no = htmlspecialchars($_POST['cust_mobile_no']); // corresponds to mobile_no
+// Fetch customer's accounts for filter dropdown
+$sql_accounts = "SELECT a.account_number, a.account_type, a.balance 
+                 FROM account a 
+                 JOIN customer_account ca ON a.account_number = ca.account_number 
+                 WHERE ca.cust_id = ? 
+                 ORDER BY a.account_type, a.account_number";
+$stmt_accounts = $conn->prepare($sql_accounts);
+$stmt_accounts->bind_param("i", $cust_id);
+$stmt_accounts->execute();
+$customer_accounts = $stmt_accounts->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_accounts->close();
 
-    if (!$cust_address || !$cust_phone_number || !$cust_city || !$cust_mobile_no) {
-        $message = "All editable fields (Address, Phone, City, Mobile) are required.";
-        $message_type = 'error';
+// Fetch transactions based on filter
+if ($account_filter === 'all') {
+    // Get all transactions for all customer accounts
+    $sql_transactions = "SELECT t.trans_id, t.account_number, t.trans_type, t.amount, 
+                                t.trans_date, t.description, a.account_type
+                         FROM transaction t
+                         JOIN account a ON t.account_number = a.account_number
+                         WHERE t.account_number IN (
+                             SELECT account_number FROM customer_account WHERE cust_id = ?
+                         )
+                         ORDER BY t.trans_date DESC, t.trans_id DESC";
+    $stmt_transactions = $conn->prepare($sql_transactions);
+    $stmt_transactions->bind_param("i", $cust_id);
+} else {
+    // Get transactions for specific account
+    $sql_transactions = "SELECT t.trans_id, t.account_number, t.trans_type, t.amount, 
+                                t.trans_date, t.description, a.account_type
+                         FROM transaction t
+                         JOIN account a ON t.account_number = a.account_number
+                         WHERE t.account_number = ? AND t.account_number IN (
+                             SELECT account_number FROM customer_account WHERE cust_id = ?
+                         )
+                         ORDER BY t.trans_date DESC, t.trans_id DESC";
+    $stmt_transactions = $conn->prepare($sql_transactions);
+    $stmt_transactions->bind_param("ii", $account_filter, $cust_id);
+}
+
+if ($stmt_transactions->execute()) {
+    $result = $stmt_transactions->get_result();
+    $transactions = $result->fetch_all(MYSQLI_ASSOC);
+} else {
+    $message = "Error fetching transactions: " . $stmt_transactions->error;
+    $message_type = 'error';
+}
+$stmt_transactions->close();
+$conn->close();
+
+// Function to format amount with color based on transaction type
+function formatAmount($type, $amount) {
+    $formatted = number_format($amount, 2);
+    if ($type === 'Deposit') {
+        return '<span style="color: #27ae60;">+$' . $formatted . '</span>';
+    } elseif ($type === 'Withdrawal') {
+        return '<span style="color: #e74c3c;">-$' . $formatted . '</span>';
     } else {
-        // SQL to update CUSTOMER table
-        // We update the address, city, phone_number, and mobile_no
-        $sql_update = "UPDATE customer SET address = ?, phone_number = ?, city = ?, mobile_no = ? WHERE cust_id = ?";
-        $stmt_update = $conn->prepare($sql_update);
-        
-        if ($stmt_update === false) {
-             $message = "Database error during preparation: " . $conn->error;
-             $message_type = 'error';
-        } else {
-            $stmt_update->bind_param("ssssi", $cust_address, $cust_phone_number, $cust_city, $cust_mobile_no, $cust_id);
-
-            if ($stmt_update->execute()) {
-                // Update session variable for immediate effect (if needed, though name isn't changing)
-                // For this structure, we rely on the next fetch to get fresh data
-                $message = "Your profile information has been updated successfully!";
-                $message_type = 'success';
-            } else {
-                $message = "Error updating profile: " . $stmt_update->error;
-                $message_type = 'error';
-            }
-            $stmt_update->close();
-        }
+        return '<span style="color: #3498db;">$' . $formatted . '</span>';
     }
 }
 
-// -----------------------------------------------------
-// 2. Fetch Customer Data (before or after update)
-// -----------------------------------------------------
-$sql_fetch = "SELECT first_name, last_name, address, phone_number, city, mobile_no, ssn, date_of_birth FROM customer WHERE cust_id = ?";
-$stmt_fetch = $conn->prepare($sql_fetch);
-$stmt_fetch->bind_param("i", $cust_id);
-$stmt_fetch->execute();
-$result_fetch = $stmt_fetch->get_result();
-
-if ($result_fetch->num_rows > 0) {
-    $customer_data = $result_fetch->fetch_assoc();
-} else {
-    // Should not happen if the user is logged in
-    $message = "Error: Customer data not found.";
-    $message_type = 'error';
+// Function to format transaction type with badge
+function formatTransactionType($type) {
+    $colors = [
+        'Deposit' => '#27ae60',
+        'Withdrawal' => '#e74c3c',
+        'Transfer' => '#3498db'
+    ];
+    $color = $colors[$type] ?? '#95a5a6';
+    return '<span style="background-color: ' . $color . '; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">' . $type . '</span>';
 }
-$stmt_fetch->close();
-$conn->close();
-
 ?>
 
 <!DOCTYPE html>
@@ -90,7 +103,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Profile - Secure Banking Portal</title>
+    <title>Transaction History - Secure Banking Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* General Setup */
@@ -118,7 +131,7 @@ $conn->close();
         .nav-links a:hover {
             background-color: #0056b3;
         }
-        .container { max-width: 600px; margin: 30px auto; padding: 0 20px; }
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
         
         h2 { 
             color: #004c8c; 
@@ -129,58 +142,94 @@ $conn->close();
             font-size: 1.8em;
         }
 
-        /* Card and Form Styling */
-        .profile-card {
+        /* Filter Section */
+        .filter-section {
             background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e0e6ed;
-        }
-        .form-group {
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
+        .filter-section label {
             font-weight: 600;
             color: #555;
         }
-        .form-group input:not([disabled]), .form-group textarea:not([disabled]) {
-            width: 100%;
-            padding: 12px;
+        .filter-section select {
+            padding: 8px 12px;
             border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
+            border-radius: 4px;
             font-size: 1em;
-            transition: border-color 0.3s, box-shadow 0.3s;
         }
-        .form-group input:focus:not([disabled]), .form-group textarea:focus:not([disabled]) {
-            border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-            outline: none;
+        .apply-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
         }
-        .form-group input[disabled] {
-            background-color: #e9ecef; /* Light gray for disabled fields */
-            color: #6c757d;
-            cursor: not-allowed;
+        .apply-btn:hover {
+            background-color: #0056b3;
         }
 
-        .submit-btn {
-            background-color: #2ecc71; /* Green for Update/Save */
-            color: white;
-            padding: 15px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            width: 100%;
-            transition: background-color 0.3s, transform 0.1s;
+        /* Transactions Card */
+        .transactions-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e0e6ed;
+            overflow: hidden;
         }
-        .submit-btn:hover {
-            background-color: #27ae60;
-            transform: translateY(-1px);
+
+        /* Transactions Table */
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .transactions-table th {
+            background-color: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .transactions-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+        .transactions-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .transactions-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Account Badge */
+        .account-badge {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        /* No Transactions Message */
+        .no-transactions {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .no-transactions i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
         }
 
         /* Message Styles */
@@ -214,6 +263,24 @@ $conn->close();
             color: #0056b3;
             text-decoration: underline;
         }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+            .transactions-table {
+                font-size: 0.9em;
+            }
+            .transactions-table th,
+            .transactions-table td {
+                padding: 10px 8px;
+            }
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
 <body>
@@ -224,13 +291,14 @@ $conn->close();
         </div>
         <div class="nav-links">
             <a href="customer_dashboard.php">Dashboard</a>
+            <a href="customer_manage_profile.php">My Profile</a>
         </div>
     </div>
 
     <div class="container">
         
         <a href="customer_dashboard.php" class="back-link">&leftarrow; Back to Dashboard</a>
-        <h2>Manage My Profile</h2>
+        <h2>Transaction History</h2>
 
         <?php if ($message): ?>
             <div class="alert <?php echo $message_type; ?>">
@@ -238,67 +306,82 @@ $conn->close();
             </div>
         <?php endif; ?>
 
-        <div class="profile-card">
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <label for="account_filter">Filter by Account:</label>
+            <select id="account_filter" name="account_filter">
+                <option value="all" <?php echo $account_filter === 'all' ? 'selected' : ''; ?>>All Accounts</option>
+                <?php foreach ($customer_accounts as $account): ?>
+                    <option value="<?php echo $account['account_number']; ?>" 
+                            <?php echo $account_filter == $account['account_number'] ? 'selected' : ''; ?>>
+                        <?php echo $account['account_type'] . ' - ' . $account['account_number'] . ' ($' . number_format($account['balance'], 2) . ')'; ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <button class="apply-btn" onclick="applyFilter()">Apply Filter</button>
+        </div>
 
-            <?php if ($customer_data): ?>
-                <p style="margin-top: 0; color: #7f8c8d;">Customer ID: **<?php echo $cust_id; ?>** | SSN (Partial): **<?php echo substr($customer_data['ssn'], -4); ?>**</p>
-                <form method="POST" action="customer_manage_profile.php">
-                    
-                    <div class="form-group">
-                        <label for="full_name">Full Name</label>
-                        <input type="text" id="full_name" value="<?php echo htmlspecialchars($customer_data['first_name'] . ' ' . $customer_data['last_name']); ?>" disabled>
-                        <small style="color: #999;">Contact support to change your legal name.</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="date_of_birth">Date of Birth</label>
-                        <input type="date" id="date_of_birth" value="<?php echo htmlspecialchars($customer_data['date_of_birth']); ?>" disabled>
-                    </div>
-
-                    <h3 style="color: #004c8c; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 30px;">Contact Information</h3>
-
-                    <div class="form-group">
-                        <label for="cust_mobile_no">Mobile Number (Primary)</label>
-                        <input type="tel" id="cust_mobile_no" name="cust_mobile_no" value="<?php echo htmlspecialchars($customer_data['mobile_no']); ?>" maxlength="15" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="cust_phone_number">Home/Other Phone</label>
-                        <input type="tel" id="cust_phone_number" name="cust_phone_number" value="<?php echo htmlspecialchars($customer_data['phone_number']); ?>" maxlength="15" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="cust_address">Street Address</label>
-                        <textarea id="cust_address" name="cust_address" rows="2" maxlength="255" required><?php echo htmlspecialchars($customer_data['address']); ?></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="cust_city">City</label>
-                        <input type="text" id="cust_city" name="cust_city" value="<?php echo htmlspecialchars($customer_data['city']); ?>" maxlength="50" required>
-                    </div>
-
-                    <div class="form-group">
-                        <button type="submit" name="update_profile" class="submit-btn">
-                            Save Profile Changes
-                        </button>
-                    </div>
-                </form>
+        <!-- Transactions Table -->
+        <div class="transactions-card">
+            <?php if (!empty($transactions)): ?>
+                <table class="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Transaction ID</th>
+                            <th>Account</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($transactions as $transaction): ?>
+                            <tr>
+                                <td>
+                                    <strong><?php echo date('M j, Y', strtotime($transaction['trans_date'])); ?></strong><br>
+                                    <small style="color: #6c757d;"><?php echo date('g:i A', strtotime($transaction['trans_date'])); ?></small>
+                                </td>
+                                <td>#<?php echo $transaction['trans_id']; ?></td>
+                                <td>
+                                    <div class="account-badge">
+                                        <?php echo $transaction['account_type'] . '<br>'; ?>
+                                        <small>****<?php echo substr($transaction['account_number'], -4); ?></small>
+                                    </div>
+                                </td>
+                                <td><?php echo formatTransactionType($transaction['trans_type']); ?></td>
+                                <td><?php echo htmlspecialchars($transaction['description'] ?? 'No description'); ?></td>
+                                <td style="font-weight: 600; text-align: right;">
+                                    <?php echo formatAmount($transaction['trans_type'], $transaction['amount']); ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             <?php else: ?>
-                <div class="alert error">
-                    Unable to load profile data. Please return to the dashboard and try again.
+                <div class="no-transactions">
+                    <i>📊</i>
+                    <h3>No Transactions Found</h3>
+                    <p>There are no transactions to display for the selected account filter.</p>
                 </div>
             <?php endif; ?>
-
         </div>
         
         <div style="height: 40px;"></div>
 
     </div>
 
+    <script>
+        function applyFilter() {
+            const accountFilter = document.getElementById('account_filter').value;
+            window.location.href = `transaction_history.php?account=${accountFilter}`;
+        }
+
+        // Auto-submit form when filter changes
+        document.getElementById('account_filter').addEventListener('change', function() {
+            applyFilter();
+        });
+    </script>
+
 </body>
 </html>
-```eof
-
-This code now correctly uses the fields from your `customer` table (`first_name`, `last_name`, `address`, `phone_number`, `city`, `mobile_no`) for display and update operations.
-
-Do you want to proceed with building the **Employee/Staff Portal** features, or is there another customer-side function you need?
