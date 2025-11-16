@@ -71,24 +71,30 @@ Admin: http://localhost/Banking-Web/admin/
 📁 Project Structure
 text
 Banking-Web/
-├── admin/                 # Administrator Portal
+
+├── admin/          
+# Administrator Portal
 │   ├── admin_customer_details.php
 │   ├── admin_loans.php
 │   ├── staff_reports.php
 │   └── ...
-├── customer/              # Customer Portal  
+├── customer/            
+# Customer Portal  
 │   ├── customer_dashboard.php
 │   ├── customer_transfer.php
 │   ├── transaction_history.php
 │   └── ...
-├── staff/                 # Staff Portal
+├── staff/       
+# Staff Portal
 │   ├── staff_dashboard.php
 │   └── ...
-├── authentication/        # Login System
+├── authentication/  
+# Login System
 │   ├── admin_login.php
 │   ├── customer_login.php
 │   └── staff_login.php
-└── assets/               # CSS, JS, Images
+└── assets/         
+# CSS, JS, Images
     ├── css/
     ├── js/
     └── images/
